@@ -16,6 +16,8 @@ import java.util.Date;
  */
 public class PenghitungUmurFrame extends javax.swing.JFrame {
     private PenghitungUmurHelper helper;
+    private volatile boolean stopFetching = false;
+    private Thread peristiwaThread;
     /**
      * Creates new form PenghitungUmurFrame
      */
@@ -44,11 +46,15 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
         jButton2 = new javax.swing.JButton();
         txtumur = new javax.swing.JTextField();
         txthariUlangTahunBerikutnya = new javax.swing.JTextField();
-        jLabel4 = new javax.swing.JLabel();
+        jPanel2 = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        txtAreaPeristiwa = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Aplikasi Pengitung Umur");
 
+        jPanel1.setBackground(new java.awt.Color(255, 153, 255));
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Aplikasi Penghitung Umur", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 24))); // NOI18N
         jPanel1.setToolTipText("");
         jPanel1.setLayout(new java.awt.GridBagLayout());
 
@@ -129,19 +135,30 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         jPanel1.add(txthariUlangTahunBerikutnya, gridBagConstraints);
 
-        jLabel4.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
-        jLabel4.setText("Aplikasi Penghitung Umur");
-        jPanel1.add(jLabel4, new java.awt.GridBagConstraints());
+        jPanel2.setLayout(new java.awt.GridLayout());
+
+        txtAreaPeristiwa.setColumns(20);
+        txtAreaPeristiwa.setRows(20);
+        jScrollPane1.setViewportView(txtAreaPeristiwa);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 944, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 944, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, Short.MAX_VALUE))
+            .addComponent(jScrollPane1)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 193, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 229, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 378, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
         pack();
@@ -159,7 +176,39 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
         String tanggalUlangTahunBerikutnya =ulangTahunBerikutnya.format(formatter);
         txthariUlangTahunBerikutnya.setText(hariUlangTahunBerikutnya + "(" + tanggalUlangTahunBerikutnya + ")");
+        
+
+    stopFetching = true;
+    if (peristiwaThread != null && peristiwaThread.isAlive()) {
+        peristiwaThread.interrupt(); // Beri sinyal ke thread untuk berhenti
     }
+
+    stopFetching = false;
+
+    peristiwaThread = new Thread(() -> {
+    try {
+        txtAreaPeristiwa.setText("Tunggu, sedang mengambil data...\n");
+        
+        helper.getPeristiwaBarisPerBaris(ulangTahunBerikutnya, txtAreaPeristiwa, () -> stopFetching);
+        
+        if (!stopFetching) {
+            javax.swing.SwingUtilities.invokeLater(() -> txtAreaPeristiwa.append("Selesai mengambil data peristiwa\n"));
+        }
+    } catch (Exception e) {
+        if (Thread.currentThread().isInterrupted()) {
+            javax.swing.SwingUtilities.invokeLater(() -> 
+                txtAreaPeristiwa.setText("Pengambilan data dibatalkan.\n")
+            );
+        } else {
+            javax.swing.SwingUtilities.invokeLater(() -> 
+                txtAreaPeristiwa.setText("Terjadi kesalahan: " + e.getMessage())
+            );
+        }
+    }
+});
+
+    peristiwaThread.start();
+        }
     }//GEN-LAST:event_btnHitungActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
@@ -169,6 +218,11 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
     private void TanggalLahirPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_TanggalLahirPropertyChange
         txtumur.setText("");
         txthariUlangTahunBerikutnya.setText("");
+        stopFetching = true;
+    if (peristiwaThread != null && peristiwaThread.isAlive()) {
+        peristiwaThread.interrupt();
+        }
+        txtAreaPeristiwa.setText("");
 // TODO add your handling code here:
     }//GEN-LAST:event_TanggalLahirPropertyChange
 
@@ -214,8 +268,10 @@ public class PenghitungUmurFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTextArea txtAreaPeristiwa;
     private javax.swing.JTextField txthariUlangTahunBerikutnya;
     private javax.swing.JTextField txtumur;
     // End of variables declaration//GEN-END:variables
